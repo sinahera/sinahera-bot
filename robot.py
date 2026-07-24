@@ -1,14 +1,12 @@
 import requests
 import json
-from balebot import Bot
+import time
 
 # === تنظیمات ===
 BOT_TOKEN = "1295567526:bcBC6Mk8FMksGs0l6dwZsZbdnkDJ2JX-bso"
 DEEPSEEK_API_KEY = "sk-2414f35c6e84456bbe88f9cb7360ed5b"
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
-
-# === راه‌اندازی ربات ===
-bot = Bot(token=BOT_TOKEN)
+BALE_URL = f"https://api.bale.ai/v1/bots/{BOT_TOKEN}/"
 
 def ask_deepseek(question):
     headers = {
@@ -34,36 +32,64 @@ def ask_deepseek(question):
     else:
         return f"خطا در ارتباط با DeepSeek: {response.status_code}"
 
-# === دستورات ربات ===
-@bot.command("/start")
-def start_handler(message):
-    bot.send_message(
-        message.chat.id,
-        "🤖 سلام! من ربات هوش مصنوعی DeepSeek هستم.\n\n"
-        "سوالات خود را به صورت مستقیم برای من بفرستید."
-    )
+def send_message(chat_id, text):
+    url = BALE_URL + "sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": text
+    }
+    requests.post(url, json=payload)
 
-@bot.command("/ask")
-def ask_handler(message):
-    user_question = message.text.replace("/ask", "", 1).strip()
+def get_updates(offset=None):
+    url = BALE_URL + "getUpdates"
+    params = {"timeout": 30}
+    if offset:
+        params["offset"] = offset
+    response = requests.get(url, params=params)
+    return response.json()
+
+def handle_message(message):
+    chat_id = message["chat"]["id"]
+    text = message.get("text", "")
     
-    if not user_question:
-        bot.send_message(message.chat.id, "❌ لطفاً یک سوال بپرسید.\nمثال: /ask چطور غذا بپزم؟")
+    if not text:
         return
     
-    bot.send_message(message.chat.id, "⏳ در حال پردازش سوال شما...")
+    if text.startswith("/start"):
+        send_message(chat_id, "🤖 سلام! من ربات هوش مصنوعی DeepSeek هستم.\n\nسوالات خود را بپرسید.")
+        return
     
-    answer = ask_deepseek(user_question)
-    bot.send_message(message.chat.id, f"🤖 پاسخ:\n\n{answer}")
+    if text.startswith("/ask"):
+        question = text.replace("/ask", "", 1).strip()
+        if not question:
+            send_message(chat_id, "❌ لطفاً یک سوال بپرسید.\nمثال: /ask چطور غذا بپزم؟")
+            return
+        send_message(chat_id, "⏳ در حال پردازش سوال شما...")
+        answer = ask_deepseek(question)
+        send_message(chat_id, f"🤖 پاسخ:\n\n{answer}")
+        return
+    
+    # پیام عادی
+    send_message(chat_id, "⏳ در حال پردازش...")
+    answer = ask_deepseek(text)
+    send_message(chat_id, f"🤖 {answer}")
 
-@bot.event
-def on_message(message):
-    if message.text and not message.text.startswith("/"):
-        bot.send_message(message.chat.id, "⏳ در حال پردازش...")
-        answer = ask_deepseek(message.text)
-        bot.send_message(message.chat.id, f"🤖 {answer}")
-
-# === اجرا ===
 if __name__ == "__main__":
     print("🚀 ربات DeepSeek در حال اجراست...")
-    bot.run()
+    offset = None
+    
+    while True:
+        try:
+            updates = get_updates(offset)
+            
+            if updates.get("ok") and updates.get("result"):
+                for update in updates["result"]:
+                    if "message" in update:
+                        handle_message(update["message"])
+                    offset = update["update_id"] + 1
+            
+            time.sleep(1)
+            
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(5)
