@@ -4,8 +4,16 @@ import time
 import os
 
 # === تنظیمات با استفاده از متغیرهای محیطی ===
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "1295567526:bcBC6Mk8FMksGs0l6dwZsZbdnkDJ2JX-bso")
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-2414f35c6e84456bbe88f9cb7360ed5b")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+
+# اگر متغیرهای محیطی تعریف نشده باشند، خطا بده
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN is not set in environment variables!")
+
+if not DEEPSEEK_API_KEY:
+    raise ValueError("DEEPSEEK_API_KEY is not set in environment variables!")
+
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 BALE_URL = f"https://api.bale.ai/v1/bots/{BOT_TOKEN}/"
 
