@@ -1,6 +1,1 @@
-balebot
 requests
-pillow>=10.0.0
-aiohttp>=3.9.0
-asyncio>=3.4.0
-graypy>=2.1.0
