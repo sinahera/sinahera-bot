@@ -1,2 +1,3 @@
 balebot
 requests
+pillow>=10.0.0
